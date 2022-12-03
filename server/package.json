@@ -11,7 +11,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@swc-node/register": "^1.5.4",
     "@swc/cli": "^0.1.57",
