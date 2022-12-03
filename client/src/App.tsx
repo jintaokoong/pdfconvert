@@ -34,7 +34,7 @@ const App: Component = () => {
     throw new Error('VITE_SITE_KEY is not defined');
   }
   return (
-    <div>
+    <div class={'mx-auto max-w-2xl p-4'}>
       <h3>Hello, Solid!</h3>
       <p>Here, solve a captcha:</p>
       <HCaptcha sitekey={siteKey} onVerify={handleVerify} />
