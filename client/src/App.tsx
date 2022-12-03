@@ -1,5 +1,6 @@
 import { Component, createSignal, onCleanup } from 'solid-js';
 import HCaptcha from 'solid-hcaptcha';
+import http from './configurations/http';
 
 const App: Component = () => {
   const [token, setToken] = createSignal<string | null>(null);
@@ -10,22 +11,17 @@ const App: Component = () => {
 
   const handleSubmit = () => {
     console.log(token());
-    fetch('http://localhost:3000/captcha', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token: token() }),
-    })
-      .then((res) => {
-        if (res.headers.get('Content-Type')?.includes('application/json')) {
-          return res.json();
-        } else {
-          return res.text();
-        }
+    http
+      .post('/captcha', {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: {
+          token: token(),
+        },
       })
-      .then((data) => {
-        console.log(data);
+      .then((res) => {
+        console.log(res);
       });
   };
 
