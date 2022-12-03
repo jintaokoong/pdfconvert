@@ -62,8 +62,13 @@ const createClient = (config: ClientConfig) => {
       }
       if (res.headers.get('Content-Type')?.includes('application/json')) {
         return res.json();
+      } else if (res.headers.get('Content-Type')?.includes('application/pdf')) {
+        return res.blob();
+      } else if (res.headers.get('Content-Type')?.includes('text/plain')) {
+        return res.text();
+      } else {
+        return res;
       }
-      return res.text();
     },
     put: async (path: string, body: {}) => {},
     post: async <T extends Record<string, unknown> | FormData>(
@@ -83,8 +88,13 @@ const createClient = (config: ClientConfig) => {
       }
       if (res.headers.get('Content-Type')?.includes('application/json')) {
         return res.json();
+      } else if (res.headers.get('Content-Type')?.includes('application/pdf')) {
+        return res.blob();
+      } else if (res.headers.get('Content-Type')?.includes('text/plain')) {
+        return res.text();
+      } else {
+        return res;
       }
-      return res.text();
     },
     delete: async (path: string) => {},
   };
