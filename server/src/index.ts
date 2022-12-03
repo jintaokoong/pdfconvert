@@ -63,26 +63,30 @@ type Options = {
   layout?: "portrait" | "landscape";
 };
 
-app.post("/generate", async (req, rep) => {
-  const token = req.headers["authorization"];
-  if (!token) {
-    rep.code(401);
-    throw new Error("Authorization header is not set");
+app.addHook("preHandler", async (req, rep) => {
+  if (req.url === "/generate") {
+    const token = req.headers["authorization"];
+    if (!token) {
+      rep.code(401);
+      throw new Error("Authorization header is not set");
+    }
+    const secret = process.env.HCAPTCHA_SECRET;
+    if (!secret) {
+      rep.code(500);
+      throw new Error("Server not configured properly");
+    }
+    const result = await verify(secret, token);
+    if (!result.success) {
+      rep.code(401);
+      throw new Error("Captcha verification failed");
+    }
   }
-  const secret = process.env.HCAPTCHA_SECRET;
-  if (!secret) {
-    rep.code(500);
-    throw new Error("Server configuration error");
-  }
-  const captchaResult = await verify(secret, token);
-  if (!captchaResult.success) {
-    rep.code(401);
-    throw new Error("Captcha verification failed");
-  }
+});
 
+app.post("/generate", async (req, rep) => {
   const parts = req.parts({
     limits: {
-      fileSize: 50 * 1024 * 1024,
+      fileSize: 20 * 1024 * 1024,
     },
   });
   const files = [];
