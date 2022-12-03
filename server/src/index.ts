@@ -1,5 +1,9 @@
 import cors from "@fastify/cors";
-import multipart, { Multipart, MultipartFile } from "@fastify/multipart";
+import multipart, {
+  Multipart,
+  MultipartFile,
+  SavedMultipartFile,
+} from "@fastify/multipart";
 import fastify from "fastify";
 
 import { config } from "dotenv";
@@ -14,7 +18,8 @@ import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import { Type } from "@sinclair/typebox";
 
 import { verify } from "hcaptcha";
-import { reverse } from "ramda";
+import { ap, reverse } from "ramda";
+import { fastifyMultipart } from "@fastify/multipart";
 
 config();
 
@@ -85,56 +90,28 @@ app.addHook("preHandler", async (req, rep) => {
 });
 
 app.addHook("onSend", async (req, rep) => {
-  rep.header("x-api-version", "1.0.0");
+  rep.header("x-api-version", "1.0.1");
   return;
 });
 
 app.post("/generate", async (req, rep) => {
-  const parts = req.parts({
+  const parts = req.parts();
+  let rest: Options = {};
+  const files = await req.saveRequestFiles({
     limits: {
       fileSize: 20 * 1024 * 1024,
     },
   });
-  const files = [];
-  let rest: Options = {};
-  try {
-    for await (const part of parts) {
-      if (isMultipartFile(part) && part.fieldname === "files") {
-        const filename = uuid();
-        const path = `./tmp/${filename}.jpeg`;
-        files.push(path);
-        const file = fs.createWriteStream(path);
-        part.file.pipe(file);
-      } else if (isMultipartFile(part)) {
-        app.log.warn(`Unknown fieldname: ${part.fieldname}`);
-      } else {
-        if (part.fieldname === "layout") {
-          const result = z
-            .enum(["portrait", "landscape"])
-            .safeParse(part.value);
-          if (result.success) {
-            rest.layout = result.data;
-          }
-        }
+  for await (const part of parts) {
+    if (!isMultipartFile(part) && part.fieldname === "layout") {
+      const result = z.enum(["portrait", "landscape"]).safeParse(part.value);
+      if (result.success) {
+        rest.layout = result.data;
       }
+    } else if (!isMultipartFile(part)) {
+      app.log.warn(`Unknown field ${part.fieldname}`);
     }
-  } catch (error) {
-    app.log.error(error);
-    if (error instanceof app.multipartErrors.RequestFileTooLargeError) {
-      const jobs = files.map((target) =>
-        fsPromises.unlink(target).catch((error) => console.error(error))
-      );
-      const result = await Promise.allSettled(jobs);
-      const errors = result
-        .filter((result) => result.status === "rejected")
-        .map((result) => (result as PromiseRejectedResult).reason);
-      for (const error of errors) {
-        app.log.error(error);
-      }
-    }
-    throw error;
   }
-  app.log.info(rest);
 
   const A4Size: [number, number] = [595.28, 841.89];
   const filename = uuid() + ".pdf";
@@ -146,7 +123,7 @@ app.post("/generate", async (req, rep) => {
       rest.layout === "landscape"
         ? (reverse(A4Size) as [number, number])
         : A4Size;
-    doc.image(file, 0, 0, {
+    doc.image(file.filepath, 0, 0, {
       fit: size,
       align: "center",
       valign: "center",
@@ -170,19 +147,7 @@ app.post("/generate", async (req, rep) => {
   });
   doc.end();
   const readable = await result;
-  const removeTargets = [...files, filename];
-  const jobs = removeTargets.map((target) =>
-    fsPromises.unlink(target).catch((error) => console.error(error))
-  );
-  const results = await Promise.allSettled(jobs);
-  console.log(
-    `Successfully removed ${
-      results.filter((result) => result.status === "fulfilled").length
-    } files`,
-    `with ${
-      results.filter((result) => result.status === "rejected").length
-    } errors`
-  );
+  await fsPromises.unlink(filename);
   rep.type("application/pdf");
   rep.send(readable);
   return rep;
