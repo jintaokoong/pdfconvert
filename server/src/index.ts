@@ -180,8 +180,9 @@ app.post("/generate", async (req, rep) => {
 
 app
   .listen({
-    port: 3000,
+    host: "::",
+    port: Number(process.env.PORT) || 3000,
   })
-  .then(() => {
-    app.log.info("Server listening on port 3000");
+  .then((addr) => {
+    app.log.info(`Server listening on ${addr}`);
   });
