@@ -81,6 +81,12 @@ app.addHook("preHandler", async (req, rep) => {
       throw new Error("Captcha verification failed");
     }
   }
+  return;
+});
+
+app.addHook("onSend", async (req, rep) => {
+  rep.header("x-api-version", "1.0.0");
+  return;
 });
 
 app.post("/generate", async (req, rep) => {
